@@ -170,7 +170,16 @@ export async function setContactTags(
     tagNames,
     canCreateTags: true,
   });
-  const desired = new Set(tagIdByKey.values());
+  // `resolveImportTagIds` returns a name→id lookup covering EVERY tag in
+  // the account — it is shared with the CSV importer, which resolves
+  // names one at a time (see `assignImportedContactTags`). Treating its
+  // values as the desired set stamped every account tag onto the
+  // contact, so resolve only the names actually requested.
+  const desired = new Set(
+    tagNames
+      .map((name) => tagIdByKey.get(name.trim().toLowerCase()))
+      .filter((id): id is string => Boolean(id))
+  );
 
   // Diff against the current joins rather than delete-all-then-insert:
   // a diff only touches tags that actually change, so a mid-operation
