@@ -157,11 +157,13 @@ function InboxPageInner() {
           // Already in state — keep its fields (a realtime UPDATE may
           // have landed while the fetch was in flight and patched
           // last_message_text / unread_count to fresher values than
-          // the row we just read). Only backfill `contact`, which the
-          // realtime payloads never carry.
+          // the row we just read). `contact` is the exception: realtime
+          // payloads never carry it, so the row we just read is always
+          // the freshest view of it — prefer it so tag changes made by
+          // an outside integration surface without a reload.
           return prev.map((c) =>
             c.id === fetched.id
-              ? { ...c, contact: c.contact ?? fetched.contact }
+              ? { ...c, contact: fetched.contact ?? c.contact }
               : c,
           );
         }
@@ -318,6 +320,13 @@ function InboxPageInner() {
                 : c,
             ),
           );
+
+          // The in-place patch above keeps the previous `contact` — realtime
+          // payloads carry no joins — so a tag written by an outside
+          // integration would not surface until a reload. Same reason the
+          // `else` branch below hydrates; the guard inside
+          // `hydrateConversation` makes the repeat call cheap.
+          hydrateConversation(conv.id);
         } else {
           // UPDATE arrived before the INSERT (or after a missed INSERT)
           // — fetch the row so it surfaces with its contact joined. The
