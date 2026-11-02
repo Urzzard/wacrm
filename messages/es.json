@@ -2379,6 +2379,7 @@
     "previewBody": "Cuerpo del mensaje…",
     "previewButton": "Botón",
     "previewMenu": "Menú",
+    "previewContactRequest": "Compartir info. de contacto",
     "buttonsCount": "Botones ({count}/{max})",
     "idPlaceholder": "id",
     "buttonLabelPlaceholder": "Texto del botón",

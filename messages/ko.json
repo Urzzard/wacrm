@@ -2379,6 +2379,7 @@
     "previewBody": "메시지 본문…",
     "previewButton": "버튼",
     "previewMenu": "메뉴",
+    "previewContactRequest": "연락처 정보 공유",
     "buttonsCount": "버튼 ({count}/{max})",
     "idPlaceholder": "id",
     "buttonLabelPlaceholder": "버튼 라벨",

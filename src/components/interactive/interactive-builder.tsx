@@ -69,12 +69,18 @@ interface InteractiveBuilderProps {
  * composer, the automation Send node, and the quick-replies manager.
  */
 export function InteractiveBuilder({
-  value,
+  value: rawValue,
   onChange,
   showPreview = true,
 }: InteractiveBuilderProps) {
   const t = useTranslations("Interactive");
   const [advanced, setAdvanced] = useState(false);
+  // The API-only contact-info request has no editor; open it as reply
+  // buttons with the same body.
+  const value =
+    rawValue.kind === "request_contact_info"
+      ? { ...blankButtonsPayload(), body: rawValue.body }
+      : rawValue;
   const validation = validateInteractivePayload(value);
 
   const setField = (patch: Partial<InteractiveMessagePayload>) =>

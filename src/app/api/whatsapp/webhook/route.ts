@@ -32,6 +32,7 @@ import {
   isTemplateWebhookField,
 } from '@/lib/whatsapp/template-webhook'
 import { applyMessageStatus } from '@/lib/whatsapp/message-status-sync'
+import { sharedContactsText, type WaSharedContact } from '@/lib/whatsapp/shared-contact'
 
 // The `after()` callback in POST runs within this route's max duration.
 // Inbound processing can fan out to per-media Meta verification calls, so
@@ -75,6 +76,8 @@ interface WhatsAppMessage {
   audio?: { id: string; mime_type: string }
   sticker?: { id: string; mime_type: string }
   location?: { latitude: number; longitude: number; name?: string; address?: string }
+  /** Contact card(s) the customer shared — see `@/lib/whatsapp/shared-contact`. */
+  contacts?: WaSharedContact[]
   reaction?: { message_id: string; emoji: string }
   /**
    * Set when the customer taps a button or list row on an interactive
@@ -1088,6 +1091,12 @@ async function parseMessageContent(
 
     case 'reaction':
       return { ...empty, contentText: message.reaction?.emoji || null }
+
+    case 'contacts':
+      return {
+        ...empty,
+        contentText: sharedContactsText(message.contacts, message.from),
+      }
 
     case 'interactive': {
       // The customer tapped a reply button or a list row on a message

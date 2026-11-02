@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getCurrentAccount, requireRole, toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
-import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
+import { validateEditableInteractivePayload } from '@/lib/whatsapp/interactive'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   let interactive_payload: unknown = null
 
   if (kind === 'interactive') {
-    const result = validateInteractivePayload(body.interactive_payload)
+    const result = validateEditableInteractivePayload(body.interactive_payload)
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }

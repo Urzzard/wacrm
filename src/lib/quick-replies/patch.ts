@@ -1,4 +1,4 @@
-import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
+import { validateEditableInteractivePayload } from '@/lib/whatsapp/interactive'
 import { getT } from '@/lib/i18n/translate'
 
 const t = getT('Api')
@@ -55,7 +55,7 @@ export function resolveQuickReplyPatch(
   }
 
   if (kind === 'interactive' || update.interactive_payload != null) {
-    const result = validateInteractivePayload(merged.interactive_payload)
+    const result = validateEditableInteractivePayload(merged.interactive_payload)
     if (!result.ok) return { ok: false, error: result.error }
   }
 

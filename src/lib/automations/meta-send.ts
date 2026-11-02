@@ -99,6 +99,10 @@ export async function engineSendInteractive(
       buttons: payload.buttons,
     })
   }
+  if (payload.kind === 'request_contact_info') {
+    // API-only kind; the step validators reject it before we get here.
+    throw new Error('Automations cannot send a contact-info request')
+  }
   return engineSendInteractiveList({
     ...common,
     bodyText: payload.body,

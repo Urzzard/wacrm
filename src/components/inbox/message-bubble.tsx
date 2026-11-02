@@ -74,6 +74,7 @@ function LocalizedInteractivePreview({
         body: t("previewBody"),
         button: t("previewButton"),
         menu: t("previewMenu"),
+        contactRequest: t("previewContactRequest"),
       }}
     />
   );

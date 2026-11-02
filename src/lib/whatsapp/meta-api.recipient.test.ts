@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  sendInteractiveRequestContactInfo,
   sendMediaMessage,
   sendTemplateMessage,
   sendTextMessage,
@@ -116,5 +117,32 @@ describe('BSUID recipients switch to Meta`s `recipient` field', () => {
       text: { body: 'hi' },
       context: { message_id: 'wamid.PARENT' },
     })
+  })
+})
+
+describe('sendInteractiveRequestContactInfo', () => {
+  // The envelope Meta accepted when the bot tested it by Graph.
+  it('sends the request_contact_info interactive to a BSUID', async () => {
+    await sendInteractiveRequestContactInfo({
+      ...BASE,
+      to: BSUID,
+      bodyText: 'Comparte tu número',
+    })
+    expect(captured).toEqual({
+      messaging_product: 'whatsapp',
+      recipient: BSUID,
+      type: 'interactive',
+      interactive: {
+        type: 'request_contact_info',
+        body: { text: 'Comparte tu número' },
+        action: { name: 'request_contact_info' },
+      },
+    })
+  })
+
+  it('uses to + recipient_type for a phone number', async () => {
+    await sendInteractiveRequestContactInfo({ ...BASE, to: '51960111174', bodyText: 'x' })
+    expect(captured).toMatchObject({ recipient_type: 'individual', to: '51960111174' })
+    expect(captured).not.toHaveProperty('recipient')
   })
 })

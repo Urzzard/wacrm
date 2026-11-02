@@ -68,9 +68,25 @@ export interface InteractiveListPayload {
   sections: InteractiveListSection[]
 }
 
+/**
+ * Asks the customer to share their own phone number. WhatsApp renders
+ * the body with a fixed "Share contact info" button (the label is set
+ * by WhatsApp, not by us); tapping it sends the customer's contact card
+ * back as a `contacts` message with `origin: "contact_request"`.
+ *
+ * The way to learn the number of a customer Meta only identifies by
+ * BSUID (issue #519). API-only: the composer, quick replies and
+ * automations build buttons / lists.
+ */
+export interface InteractiveRequestContactPayload {
+  kind: 'request_contact_info'
+  body: string
+}
+
 export type InteractiveMessagePayload =
   | InteractiveButtonsPayload
   | InteractiveListPayload
+  | InteractiveRequestContactPayload
 
 export type InteractiveValidation =
   | { ok: true }
@@ -115,7 +131,9 @@ export function validateInteractivePayload(
   if (!payload || typeof payload !== 'object') {
     return fail('Interactive message payload is required.')
   }
-  const p = payload as Partial<InteractiveMessagePayload>
+  const p = payload as Partial<
+    Omit<InteractiveButtonsPayload, 'kind'> & Omit<InteractiveListPayload, 'kind'>
+  > & { kind?: InteractiveMessagePayload['kind'] }
 
   if (typeof p.body !== 'string' || p.body.trim() === '') {
     return fail('Interactive message body text is required.')
@@ -125,6 +143,15 @@ export function validateInteractivePayload(
       `Body text exceeds the ${INTERACTIVE_LIMITS.bodyMaxLength}-character limit.`,
     )
   }
+
+  // Meta's request_contact_info takes a body and nothing else.
+  if (p.kind === 'request_contact_info') {
+    if (p.header || p.footer) {
+      return fail('A contact-info request takes no header or footer.')
+    }
+    return ok()
+  }
+
   const hf = validateHeaderFooter(p.header, p.footer)
   if (!hf.ok) return hf
 
@@ -223,7 +250,27 @@ export function validateInteractivePayload(
     return ok()
   }
 
-  return fail('Interactive message must be reply buttons or a list.')
+  return fail(
+    'Interactive message must be reply buttons, a list or a contact-info request.',
+  )
+}
+
+/**
+ * Quick replies and automations store a payload their editors re-open,
+ * and those editors only build buttons / lists — so they validate with
+ * this, which rejects the API-only `request_contact_info`.
+ */
+export function validateEditableInteractivePayload(
+  payload: unknown,
+): InteractiveValidation {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    (payload as { kind?: unknown }).kind === 'request_contact_info'
+  ) {
+    return fail('Interactive message must be reply buttons or a list.')
+  }
+  return validateInteractivePayload(payload)
 }
 
 /**
@@ -235,5 +282,6 @@ export function interactivePayloadPreviewText(
 ): string {
   const body = payload.body?.trim()
   if (body) return body
+  if (payload.kind === 'request_contact_info') return '[contact request]'
   return payload.kind === 'buttons' ? '[buttons]' : '[list]'
 }

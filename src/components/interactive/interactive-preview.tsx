@@ -1,6 +1,6 @@
 "use client";
 
-import { List, Reply } from "lucide-react";
+import { Contact, List, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { InteractiveMessagePayload } from "@/lib/whatsapp/interactive";
 
@@ -23,6 +23,8 @@ export interface InteractivePreviewLabels {
   button?: string;
   /** Shown in place of an empty list button label. */
   menu?: string;
+  /** Label of the contact-info request button, which WhatsApp sets. */
+  contactRequest?: string;
 }
 
 export function InteractivePreview({
@@ -34,9 +36,12 @@ export function InteractivePreview({
   className?: string;
   labels?: InteractivePreviewLabels;
 }) {
+  const header = payload.kind === "request_contact_info" ? undefined : payload.header;
+  const footer = payload.kind === "request_contact_info" ? undefined : payload.footer;
   const bodyLabel = labels?.body ?? "Message body…";
   const buttonLabel = labels?.button ?? "Button";
   const menuLabel = labels?.menu ?? "Menu";
+  const contactRequestLabel = labels?.contactRequest ?? "Share contact info";
   return (
     <div
       className={cn(
@@ -45,9 +50,9 @@ export function InteractivePreview({
       )}
     >
       <div className="px-3 py-2">
-        {payload.header ? (
+        {header ? (
           <p className="mb-1 break-words text-sm font-semibold">
-            {payload.header}
+            {header}
           </p>
         ) : null}
         <p className="whitespace-pre-wrap break-words text-sm">
@@ -55,9 +60,9 @@ export function InteractivePreview({
             <span className="text-muted-foreground">{bodyLabel}</span>
           )}
         </p>
-        {payload.footer ? (
+        {footer ? (
           <p className="mt-1 break-words text-[11px] text-muted-foreground">
-            {payload.footer}
+            {footer}
           </p>
         ) : null}
       </div>
@@ -76,6 +81,15 @@ export function InteractivePreview({
             </button>
           ))}
         </div>
+      ) : payload.kind === "request_contact_info" ? (
+        <button
+          type="button"
+          disabled
+          className="flex w-full items-center justify-center gap-1.5 border-t border-border py-2 text-sm font-medium text-primary"
+        >
+          <Contact className="h-3.5 w-3.5" />
+          <span className="truncate">{contactRequestLabel}</span>
+        </button>
       ) : (
         <button
           type="button"

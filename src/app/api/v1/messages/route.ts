@@ -5,15 +5,18 @@
 // `/api/whatsapp/send` (which takes an internal `conversation_id`),
 // this takes a phone number — what an external automation actually
 // has — resolves-or-creates the contact + conversation, then runs the
-// same shared send core.
+// same shared send core. `to` may instead be a business-scoped user ID
+// (BSUID), for customers Meta identifies by WhatsApp username only;
+// that resolves an existing contact and never creates one.
 //
 // Auth: API key with the `messages:send` scope. Account context (and
 // the service-role client) come from `requireApiKey`.
 //
 // Body:
 //   {
-//     "to": "+14155550123",                 // required, E.164
-//     "type": "text",                        // text|template|image|video|document|audio (default: text)
+//     "to": "+14155550123",                 // required, E.164 — or a BSUID ("US.1349…")
+//     "type": "text",                        // text|template|image|video|document|audio|interactive (default: text)
+//     "interactive_payload": { "kind": … },  // required when type=interactive: buttons | list | request_contact_info
 //     "text": "Hello!",                      // text body, or media caption
 //     "media_url": "https://…/file.pdf",     // required for image/video/document/audio
 //     "filename": "invoice.pdf",             // optional, document filename
@@ -35,7 +38,11 @@ import { after } from 'next/server';
 
 import { requireApiKey } from '@/lib/auth/api-context';
 import { ok, fail, toApiErrorResponse } from '@/lib/api/v1/respond';
-import { resolveConversationByPhone } from '@/lib/whatsapp/resolve-conversation';
+import {
+  resolveConversationByPhone,
+  resolveConversationByWaUserId,
+} from '@/lib/whatsapp/resolve-conversation';
+import { isBusinessScopedUserId } from '@/lib/whatsapp/wa-identity';
 import {
   sendMessageToConversation,
   validateSendMessageParams,
@@ -98,15 +105,17 @@ export async function POST(request: Request) {
       interactivePayload,
     });
 
-    // Find-or-create the conversation for this phone, then send. Both
-    // steps share `SendMessageError`, so one catch maps the whole
-    // pipeline to the envelope.
-    const resolved = await resolveConversationByPhone(
-      ctx.supabase,
-      ctx.accountId,
-      to,
-      typeof body.name === 'string' ? body.name : null
-    );
+    // Find-or-create the conversation for this phone (or find it for
+    // this BSUID), then send. Both steps share `SendMessageError`, so one
+    // catch maps the whole pipeline to the envelope.
+    const resolved = isBusinessScopedUserId(to)
+      ? await resolveConversationByWaUserId(ctx.supabase, ctx.accountId, to)
+      : await resolveConversationByPhone(
+          ctx.supabase,
+          ctx.accountId,
+          to,
+          typeof body.name === 'string' ? body.name : null
+        );
 
     if (resolved.conversationCreated) {
       after(() =>

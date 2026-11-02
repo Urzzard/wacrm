@@ -1039,6 +1039,53 @@ export async function sendInteractiveButtons(
   return { messageId: data.messages[0].id }
 }
 
+export interface SendInteractiveRequestContactArgs {
+  phoneNumberId: string
+  accessToken: string
+  to: string
+  bodyText: string
+  contextMessageId?: string
+}
+
+/**
+ * Ask the customer to share their phone number. WhatsApp shows the body
+ * with its own "Share contact info" button; the reply arrives as a
+ * `contacts` message with `origin: "contact_request"`.
+ */
+export async function sendInteractiveRequestContactInfo(
+  args: SendInteractiveRequestContactArgs
+): Promise<MetaSendResult> {
+  const { phoneNumberId, accessToken, to, bodyText, contextMessageId } = args
+  validateInteractiveBody(bodyText)
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    ...recipientFields(to),
+    type: 'interactive',
+    interactive: {
+      type: 'request_contact_info',
+      body: { text: bodyText },
+      action: { name: 'request_contact_info' },
+    },
+  }
+  if (contextMessageId) body.context = { message_id: contextMessageId }
+
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Meta API error: ${response.status}`)
+  }
+  const data = await response.json()
+  return { messageId: data.messages[0].id }
+}
+
 export interface InteractiveListRow {
   /** Stable id sent back in the webhook when tapped (≤ 200 chars). */
   id: string

@@ -156,6 +156,70 @@ export async function resolveConversationByPhone(
 }
 
 /**
+ * Resolve the conversation for a contact Meta identifies by BSUID — a
+ * customer with a WhatsApp username, who may have no phone number on
+ * file at all (issue #519).
+ *
+ * Unlike the phone path this never creates a contact. A BSUID is only
+ * learned from an inbound message, which has already created the
+ * contact; an unknown one is a typo or another account's id. Creating
+ * a contact here would also race that inbound create: the webhook looks
+ * up by BSUID first, would find ours, and its phone backfill would then
+ * collide with the customer's existing phone contact, splitting them in
+ * two.
+ */
+export async function resolveConversationByWaUserId(
+  db: SupabaseClient,
+  accountId: string,
+  waUserId: string
+): Promise<ResolvedConversation> {
+  const { data: contacts, error } = await db
+    .from('contacts')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('wa_user_id', waUserId)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.error('[resolve-conversation] contact lookup error:', error);
+    throw new SendMessageError('db_error', 'Failed to resolve contact', 500);
+  }
+  if (!contacts || contacts.length === 0) {
+    throw new SendMessageError(
+      'not_found',
+      'No contact with that WhatsApp user ID',
+      404
+    );
+  }
+  const contactId = contacts[0].id as string;
+
+  let ownerUserId: string;
+  try {
+    ownerUserId = await resolveAuditUserId(db, accountId);
+  } catch (err) {
+    if (err instanceof ContactError) {
+      throw new SendMessageError('db_error', err.message, err.status);
+    }
+    throw err;
+  }
+
+  const conversation = await findOrCreateConversationRow(
+    db,
+    accountId,
+    contactId,
+    ownerUserId
+  );
+
+  return {
+    conversationId: conversation.id,
+    contactId,
+    contactCreated: false,
+    conversationCreated: conversation.created,
+  };
+}
+
+/**
  * Find (oldest-first) or create the single conversation for
  * `(accountId, contactId)`. Handles the unique-index race the same way
  * the inbound webhook does: on a 23505 from a concurrent create,

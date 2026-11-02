@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   validateInteractivePayload,
+  validateEditableInteractivePayload,
   interactivePayloadPreviewText,
   type InteractiveButtonsPayload,
   type InteractiveListPayload,
@@ -138,5 +139,29 @@ describe('interactivePayloadPreviewText', () => {
   it('falls back when body is blank', () => {
     expect(interactivePayloadPreviewText({ ...validButtons, body: '   ' })).toBe('[buttons]')
     expect(interactivePayloadPreviewText({ ...validList, body: '' })).toBe('[list]')
+  })
+})
+
+describe('validateInteractivePayload — request_contact_info', () => {
+  const request = { kind: 'request_contact_info', body: 'Comparte tu número' } as const
+
+  it('accepts a body-only request', () => {
+    expect(validateInteractivePayload(request)).toEqual({ ok: true })
+  })
+
+  it('requires the body and rejects header / footer', () => {
+    expect(validateInteractivePayload({ ...request, body: ' ' }).ok).toBe(false)
+    expect(validateInteractivePayload({ ...request, header: 'H' }).ok).toBe(false)
+    expect(validateInteractivePayload({ ...request, footer: 'F' }).ok).toBe(false)
+  })
+
+  it('is refused where an editor has to re-open the payload', () => {
+    expect(validateEditableInteractivePayload(request).ok).toBe(false)
+    expect(validateEditableInteractivePayload(validButtons)).toEqual({ ok: true })
+  })
+
+  it('previews as its body, or a placeholder', () => {
+    expect(interactivePayloadPreviewText(request)).toBe('Comparte tu número')
+    expect(interactivePayloadPreviewText({ ...request, body: '' })).toBe('[contact request]')
   })
 })
